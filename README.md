@@ -2,7 +2,7 @@
 
 AURA es una aplicación de fondos de pantalla animados para Windows de 64 bits. Esta beta incluye el fondo web Órbita y el motor multimedia libVLC.
 
-## Descargar y abrir AURA
+## [Releases](https://github.com/KratechCode911/AuraDesk/releases)
 
 1. Abre **Releases** en este repositorio y selecciona la beta para Windows.
 2. En **Assets**, descarga `AURA.zip`.
