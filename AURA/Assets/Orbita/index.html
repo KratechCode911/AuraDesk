@@ -1,0 +1,48 @@
+<!doctype html><html lang="es"><meta charset="utf-8"><title>Órbita</title><style>*{box-sizing:border-box}body{margin:0;background:#0b1420;color:#fff;font:16px system-ui}canvas{display:block;width:100vw;height:100vh}</style><canvas aria-label="Escena de cristal iluminado"></canvas><script>
+const canvas=document.querySelector("canvas"), gl=canvas.getContext("webgl",{antialias:true,alpha:false});
+if(!gl){document.body.textContent="Esta escena necesita WebGL.";throw Error("WebGL");}
+function shader(type,source){
+ const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);
+ if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(shader));return shader;
+}
+const program=gl.createProgram();
+gl.attachShader(program,shader(gl.VERTEX_SHADER,`
+attribute vec3 pos, normal;
+uniform float time, aspect, cursor;
+varying vec3 n;
+void main(){
+ float a=time*.16+cursor*.25, c=cos(a), s=sin(a);
+ mat3 orbit=mat3(c,0.,s,0.,1.,0.,-s,0.,c);
+ mat3 tilt=mat3(1.,0.,0.,0.,.94,.34,0.,-.34,.94);
+ vec3 p=tilt*orbit*pos; n=tilt*orbit*normal;
+ float w=3.5-p.z;
+ gl_Position=vec4(p.x*2.1/aspect,p.y*2.1,p.z*.2,w);
+}`));
+gl.attachShader(program,shader(gl.FRAGMENT_SHADER,`
+precision mediump float; varying vec3 n;
+void main(){float k=max(.0,dot(normalize(n),normalize(vec3(-.4,.8,.6))));
+ gl_FragColor=vec4(mix(vec3(.10,.12,.32),vec3(.28,.87,.82),k),1.);}`));
+gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));
+gl.useProgram(program);
+const verts=[], ring=[[1,0,0],[0,0,1],[-1,0,0],[0,0,-1]];
+function triangle(a,b,c){
+ const u=b.map((v,i)=>v-a[i]),v=c.map((n,i)=>n-a[i]);
+ const normal=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]];
+ for(const p of [a,b,c])verts.push(...p,...normal);
+}
+for(let i=0;i<4;i++){const a=ring[i],b=ring[(i+1)%4];triangle([0,1.25,0],b,a);triangle([0,-1.25,0],a,b);}
+gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(verts),gl.STATIC_DRAW);
+for(const [key,offset] of [["pos",0],["normal",12]]){const loc=gl.getAttribLocation(program,key);gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,3,gl.FLOAT,false,24,offset);}
+const time=gl.getUniformLocation(program,"time"),aspect=gl.getUniformLocation(program,"aspect"),cursor=gl.getUniformLocation(program,"cursor");
+let x=0,timer=0;document.addEventListener("pointermove",e=>x=2*e.clientX/innerWidth-1);
+function draw(){
+ clearTimeout(timer);if(document.hidden)return;
+ const scale=Math.min(1,1280/Math.max(innerWidth,innerHeight));
+ const w=Math.max(1,Math.round(innerWidth*scale)),h=Math.max(1,Math.round(innerHeight*scale));
+ if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h);}
+ gl.enable(gl.DEPTH_TEST);gl.clearColor(.04,.065,.11,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+ gl.uniform1f(time,performance.now()/1000);gl.uniform1f(aspect,w/h);gl.uniform1f(cursor,x);gl.drawArrays(gl.TRIANGLES,0,24);
+ timer=setTimeout(draw,1000/24);
+}
+document.addEventListener("visibilitychange",draw);draw();
+</script></html>
